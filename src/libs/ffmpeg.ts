@@ -5,8 +5,8 @@ import { exec } from 'child_process';
 import ffmpegPath from 'ffmpeg-static';
 import { getReadStreamImageDownload } from '../helper';
 
-const fontPath = path.join(__dirname, '..', 'assets', 'fonts');
-const tempGifPath = path.join(__dirname, 'ffmpeg-temp');
+const fontPath = path.join('assets', 'fonts');
+const tempGifPath = path.join('ffmpeg-temp');
 
 
 const defaultFontPath = path.join(fontPath, 'TheNorth-Regular.ttf');
@@ -14,12 +14,20 @@ const defaultFontPath = path.join(fontPath, 'TheNorth-Regular.ttf');
 //https://stackoverflow.com/questions/10725225/ffmpeg-single-quote-in-drawtext
 const replaceSpecialFfmpegChars = (text: string) => {
     return text
-        .replace(/:/g, "\\:")
-        .replace(/%/g, '\\%')
-        .replace(/'/g, "\\'")
-        .replace(/"/g, '\\"')
+        .replace(/:/g, "'\\:'")
+        .replace(/%/g, "'\\%'")
+        .replace(/'/g, "'\\''")
+        .replace(/"/g, "'\\\"'")
         .replace(/\\/g, '\\\\\\')
-    }
+}
+
+const writeTextToFile = (text: string) => {
+    const filename = uuidv4() + '.txt';
+
+    fs.writeFileSync(filename, text);
+
+    return filename;
+}
 
 export const addTextToImage = async(ip: string, url: string, text: string, opts: {
     x: number,
@@ -56,9 +64,12 @@ export const addTextToImage = async(ip: string, url: string, text: string, opts:
     
         const readStream = await getReadStreamImageDownload(url, ip);
         readStream.pipe(gifWriteStream).once('close', () => {
+            const textFile = writeTextToFile(text);
+
+
             let createGif = `"${ffmpegPath}" -i "${gifPath}" -vf drawtext="`;
             createGif += `fontfile='${defaultFontPath}':`;
-            createGif += `text='${replaceSpecialFfmpegChars(text)}':`;
+            createGif += `textfile='${textFile}':`;
             createGif += `x='${opts.x}':`;
             createGif += `y='${opts.y}':`;
             createGif += opts.fontSize ? `fontsize=${opts.fontSize}:` : '';
@@ -73,8 +84,10 @@ export const addTextToImage = async(ip: string, url: string, text: string, opts:
             }
 
             // MUST BE LAST
+            createGif = createGif.slice(0, -1);
             createGif += `" "${ouputPath}"`;
             exec(createGif, err => {
+                fs.unlinkSync(textFile);
                 fs.unlinkSync(gifPath);
                 if(err) throw err;
 
