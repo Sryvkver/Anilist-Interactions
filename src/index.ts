@@ -14,12 +14,13 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.set('trust proxy', true);
-
+app.set('etag', 'strong')
 
 
 app.get('/set/:moduleId', (req, res) => {
     const moduleId = req.params.moduleId.replace('.png', '').replace('.jpg', '');
     const ip = req.headers?.passthrough_client ? String(req.headers?.passthrough_client) : req.ip;
+    const dest = req.query?.dest ? String(req.query.dest) : 'https://anilist.co/home';
     console.log(`[${ip}] updating ${moduleId}`);
 
     findModuleData(moduleId)
@@ -29,19 +30,28 @@ app.get('/set/:moduleId', (req, res) => {
                 modul.set(ip, req.query);
             }
         })
-        .finally(() => res.redirect(String(req.query?.dest) || 'https://anilist.co/home'));
+        .finally(() => res.redirect(dest));
 });
 
 app.get('/get/:moduleId', (req, res) => {
     const moduleId = req.params.moduleId.replace('.png', '').replace('.jpg', '');
     const ip = req.headers?.passthrough_client ? String(req.headers?.passthrough_client) : req.ip;
+    const ignoreCache = !!req.query?.noCache;
     console.log(`[${ip}] getting ${moduleId}`);
 
+
+    if(!ignoreCache)
+        res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
     findModuleData(moduleId)
         .then(data => convertToModule(data))
-        .then(modul => modul ? modul.get(ip, req.query) : getEmptyImage())
+        .then(modul => modul ? modul.get(ip, req.query, (etag) => res.setHeader('etag', etag)) : getEmptyImage())
         .then(stream => getMimeType(stream))
         .then(result => {
+            if(ignoreCache){
+                res.removeHeader('etag');
+                res.removeHeader('Cache-Control');
+            }
+
             res.setHeader('content-type', result.mime);
             result.stream.pipe(res)
         })

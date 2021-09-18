@@ -50,7 +50,7 @@ export class ThemeModule implements IModule {
         updateModuleData(this._id, null, null, {ip, state: themeName});
     };
 
-    get = async(ip: string, query: any) => {
+    get = async(ip: string, query: any, setEtag: (etag: string) => void) => {
         if(!this._id)
             return getEmptyImage();
 
@@ -61,6 +61,8 @@ export class ThemeModule implements IModule {
         themeIndex = themeIndex === -1 ? 0 : themeIndex;
 
         const page = this.themes[themeIndex].pages.find(ele => ele.name === (query.page || ''));
+
+        setEtag(`${this._id}-${this.themes[themeIndex].themeName}-${page?.name}`);
 
         if(page)
             return getReadStreamImageDownload(page.url, ip);
