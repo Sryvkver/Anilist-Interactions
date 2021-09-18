@@ -41,16 +41,23 @@ app.get('/get/:moduleId', (req, res) => {
 
 
     if(!ignoreCache)
-        res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+        res.setHeader('Cache-Control', 'no-cache');
     findModuleData(moduleId)
         .then(data => convertToModule(data))
-        .then(modul => modul ? modul.get(ip, req.query, (etag) => res.setHeader('etag', etag)) : getEmptyImage())
+        .then(modul => modul ? modul.get(ip, req.query, (etag) => res.setHeader('ETag', etag)) : getEmptyImage())
         .then(stream => getMimeType(stream))
         .then(result => {
             if(ignoreCache){
-                res.removeHeader('etag');
+                res.removeHeader('ETag');
                 res.removeHeader('Cache-Control');
             }
+
+            if(!!req.headers['if-none-match'] && req.headers['if-none-match'] === res.getHeader('ETag')){
+                console.log(`[${ip}] Using cached version of ${moduleId}`);
+                res.sendStatus(304);
+                return;
+            }
+
 
             res.setHeader('content-type', result.mime);
             result.stream.pipe(res)
