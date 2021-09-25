@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import mongoose from 'mongoose';
 import { findModuleData } from './repo/ModuleRepository';
 import { convertToModule } from './modules/_ModuleConvert';
-import { getEmptyImage } from './helper';
+import { getEmptyImage, getReadStreamImageDownload } from './helper';
 import { getMimeType } from 'stream-mime-type'
 
 const app = express();
@@ -68,7 +68,29 @@ app.get('/get/:moduleId', (req, res) => {
         });
 });
 
+app.get('/cache/:imageURL', (req, res) => {
+    const ip = req.headers?.passthrough_client ? String(req.headers?.passthrough_client) : req.ip;
+    res.setHeader('Cache-Control', 'no-cache');
 
+    getReadStreamImageDownload(req.params.imageURL)
+        .then(stream => getMimeType(stream))
+        .then(result => {
+            res.setHeader('ETag', req.params.imageURL);
+
+            if(!!req.headers['if-none-match'] && req.headers['if-none-match'] === res.getHeader('ETag')){
+                console.log(`[${ip}] Using cached version of ${req.params.imageURL}`);
+                res.sendStatus(304);
+                return;
+            }
+
+            res.setHeader('content-type', result.mime);
+            result.stream.pipe(res);
+        })
+        .catch(err => {
+            console.error(`[${ip}] Error`, err);   
+            return getEmptyImage().then(stream => stream.pipe(res))
+        });
+})
 
 const PORT = process.env.PORT || 443;
 mongoose.connect(process.env.MONGO_URI || '')
