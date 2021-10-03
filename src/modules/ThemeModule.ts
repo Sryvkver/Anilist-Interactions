@@ -11,29 +11,30 @@ export class ThemeModule implements IModule {
     _id?: string | undefined;
     readonly module: string = 'Theme';
 
-    private lastCheck = 0;
-    themes: Array<{
-        themeName: string,
-        pages: Array<{
-            name: string,
-            url: string
+    themeWrapper: {
+        redirect: string,
+        themes: Array<{
+            themeName: string,
+            pages: Array<{
+                name: string,
+                url: string
+            }>
         }>
-    }>;
+    };
 
     constructor(moduleData: IModuleModel){
-        this.themes = [];
+        this.themeWrapper = {redirect: '', themes: []};
         this._id = moduleData._id?.toHexString() || '';
     }
 
     updateThemes = async() => {
-        if(!this._id || +new Date() - this.lastCheck < 300000)
+        if(!this._id)
             return null;
 
-        this.lastCheck = +new Date();
         findGlobalState(this._id)
             .then(state => {
                 try {
-                    this.themes = JSON.parse(state);
+                    this.themeWrapper = JSON.parse(state);
                 } catch (error) {
                     console.warn('failed to load globalstate for', this._id);   
                 }
@@ -57,12 +58,12 @@ export class ThemeModule implements IModule {
         await this.updateThemes();
 
         const clientState = await findClientState(this._id, ip);
-        let themeIndex = this.themes.findIndex(ele => ele.themeName === clientState);
+        let themeIndex = this.themeWrapper.themes.findIndex(ele => ele.themeName === clientState);
         themeIndex = themeIndex === -1 ? 0 : themeIndex;
 
-        const page = this.themes[themeIndex].pages.find(ele => ele.name === (query.page || ''));
+        const page = this.themeWrapper.themes[themeIndex].pages.find(ele => ele.name === (query.page || ''));
 
-        setEtag(`${this._id}-${this.themes[themeIndex].themeName}-${page?.name}`);
+        setEtag(`${this._id}-${this.themeWrapper.themes[themeIndex].themeName}-${page?.name}`);
 
         if(page)
             return getReadStreamImageDownload(page.url, ip);

@@ -64,3 +64,38 @@ export const updateModuleData = async (id: string, secret: string | null = null,
 
     moduleData.save();
 }
+
+const makeid = (length: number) => {
+    let result           = '';
+    const characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+   }
+   return result;
+}
+
+export const createModule = async (idWithSecret: string, moduleType: string, globalState: string) => {
+    let module = null;
+    
+    if(!!idWithSecret){
+        const id = idWithSecret.split('-')[0];
+        const secret = idWithSecret.split('-')[1];
+        module = await ModuleModel.findById(id);
+
+        if(module?._secret !== secret){
+            throw("Wrong secret supplied!");
+        }
+    }
+
+    if(!module){
+        module = new ModuleModel();
+        module._secret = makeid(6);
+    }
+
+    module.globalState = globalState;
+    module.module = moduleType;
+    let data = await module.save();
+
+    return data.id + '-' + data._secret;
+}

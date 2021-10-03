@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
-import { findModuleData } from './repo/ModuleRepository';
+import { createModule, findGlobalState, findModuleData } from './repo/ModuleRepository';
 import { convertToModule } from './modules/_ModuleConvert';
 import { getEmptyImage, getReadStreamImageDownload } from './helper';
 import { getMimeType } from 'stream-mime-type'
@@ -13,6 +13,7 @@ const app = express();
 
 app.use(helmet());
 app.use(cors());
+app.use(express.json());
 app.set('trust proxy', true);
 app.set('etag', 'strong')
 
@@ -89,6 +90,43 @@ app.get('/cache/:imageURL', (req, res) => {
         .catch(err => {
             console.error(`[${ip}] Error`, err);   
             return getEmptyImage().then(stream => stream.pipe(res))
+        });
+})
+
+
+app.post('/', (req, res) => {
+    let id = req.body.moduleId;
+    const moduleType = req.body.module;
+    let globalState: any = null;
+
+    switch (moduleType) {
+        case 'Theme':
+            globalState = {...req.body.moduleData};
+            break;
+    
+        default:
+            res.sendStatus(433);
+            break;
+    }
+
+
+    createModule(id, moduleType, JSON.stringify(globalState))
+        .then(idWithSecret => res.send({idWithSecret}))
+        .catch(err => {
+            res.status(400).send({err});
+            console.log(err);
+        });
+});
+
+app.get('/data/:moduleId', (req, res) => {
+    let id = req.params.moduleId.split('-')[0];
+    findModuleData(id)
+        .then(data => {
+            const globalState = JSON.parse(data.globalState);
+            res.send({
+                data: globalState,
+                module: data.module
+            })
         });
 })
 
