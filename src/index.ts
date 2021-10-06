@@ -64,7 +64,7 @@ app.get('/get/:moduleId', (req, res) => {
 
     findModuleData(moduleId)
         .then(data => convertToModule(data))
-        .then(modul => modul ? modul.get(client_id, req.query, (etag) => res.setHeader('ETag', etag)) : getEmptyImage())
+        .then(modul => modul ? modul.get(client_id, req.query, (etag) => res.setHeader('ETag', client_id + '_' + etag)) : getEmptyImage())
         .then(stream => getMimeType(stream))
         .then(result => {
             if(ignoreCache){
@@ -101,7 +101,7 @@ app.get('/cache/:imageURL', (req, res) => {
     getReadStreamImageDownload(req.params.imageURL)
         .then(stream => getMimeType(stream))
         .then(result => {
-            res.setHeader('ETag', req.params.imageURL);
+            res.setHeader('ETag', client_id + '_' + req.params.imageURL);
 
             if(!!req.headers['if-none-match'] && req.headers['if-none-match'] === res.getHeader('ETag')){
                 console.log(`[${client_id}] Using cached version of ${req.params.imageURL}`);
