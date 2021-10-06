@@ -5,7 +5,7 @@ export interface IModuleModel extends mongoose.Document {
     _secret: string,
     module: string,
     clientStates: Array<{
-        ip: string,
+        client_id: string,
         state: string
     }>,
     globalState: string
@@ -15,7 +15,7 @@ export const ModuleSchema = new mongoose.Schema({
     module: String,
     _secret: String,
     clientStates: [{
-        ip: String,
+        client_id: String,
         state: String
     }],
     globalState: String

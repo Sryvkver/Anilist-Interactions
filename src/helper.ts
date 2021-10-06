@@ -1,6 +1,6 @@
 import got from 'got';
 
-export const getReadStreamImageDownload = async(imageUrl: string, ip: string = '') => {
+export const getReadStreamImageDownload = async(imageUrl: string, client_id: string = '') => {
     if(process.env.FELIXIRE_CLOUD_IP)
         imageUrl = imageUrl.replace('https://cloud.felixire.com', process.env.FELIXIRE_CLOUD_IP)
 
@@ -9,7 +9,7 @@ export const getReadStreamImageDownload = async(imageUrl: string, ip: string = '
 
     return got.stream(imageUrl, {
         headers: {
-            passthrough_client: ip
+            passthrough_client: client_id
         }
     });
 }

@@ -3,7 +3,9 @@ require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser'; 
 import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 import { createModule, findGlobalState, findModuleData } from './repo/ModuleRepository';
 import { convertToModule } from './modules/_ModuleConvert';
 import { getEmptyImage, getReadStreamImageDownload } from './helper';
@@ -14,21 +16,30 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 app.set('trust proxy', true);
 app.set('etag', 'strong')
 
+export const CLIENT_ID_COOKIE = 'ai_client_id';
 
 app.get('/set/:moduleId', (req, res) => {
     const moduleId = req.params.moduleId.replace('.png', '').replace('.jpg', '');
-    const ip = req.headers?.passthrough_client ? String(req.headers?.passthrough_client) : req.ip;
+    let client_id = req.cookies[CLIENT_ID_COOKIE] ? String(req.cookies[CLIENT_ID_COOKIE]) : uuidv4();
+
+    if(req.headers?.passthrough_client){
+        client_id = String(req.headers?.passthrough_client);
+    }else{
+        res.setHeader('Set-Cookie', `${CLIENT_ID_COOKIE}=${client_id}; Max-Age=31536000; Http-Only; Path=/; SameSite=None; Secure`)
+    }
+    
     const dest = req.query?.dest ? String(req.query.dest) : 'https://anilist.co/home';
-    console.log(`[${ip}] updating ${moduleId}`);
+    console.log(`[${client_id}] updating ${moduleId}`);
 
     findModuleData(moduleId)
         .then(data => convertToModule(data))
         .then(modul => {
             if(modul){
-                modul.set(ip, req.query);
+                modul.set(client_id, req.query);
             }
         })
         .finally(() => res.redirect(dest));
@@ -36,16 +47,24 @@ app.get('/set/:moduleId', (req, res) => {
 
 app.get('/get/:moduleId', (req, res) => {
     const moduleId = req.params.moduleId.replace('.png', '').replace('.jpg', '');
-    const ip = req.headers?.passthrough_client ? String(req.headers?.passthrough_client) : req.ip;
+    let client_id = req.cookies[CLIENT_ID_COOKIE] ? String(req.cookies[CLIENT_ID_COOKIE]) : uuidv4();
+
+    if(req.headers?.passthrough_client){
+        client_id = String(req.headers?.passthrough_client);
+    }else{
+        res.setHeader('Set-Cookie', `${CLIENT_ID_COOKIE}=${client_id}; Max-Age=31536000; Http-Only; Path=/; SameSite=None; Secure`)
+    }
+
     const ignoreCache = !!req.query?.noCache;
-    console.log(`[${ip}] getting ${moduleId}`);
+    console.log(`[${client_id}] getting ${moduleId}`);
 
 
     if(!ignoreCache)
         res.setHeader('Cache-Control', 'no-cache');
+
     findModuleData(moduleId)
         .then(data => convertToModule(data))
-        .then(modul => modul ? modul.get(ip, req.query, (etag) => res.setHeader('ETag', etag)) : getEmptyImage())
+        .then(modul => modul ? modul.get(client_id, req.query, (etag) => res.setHeader('ETag', etag)) : getEmptyImage())
         .then(stream => getMimeType(stream))
         .then(result => {
             if(ignoreCache){
@@ -54,7 +73,7 @@ app.get('/get/:moduleId', (req, res) => {
             }
 
             if(!!req.headers['if-none-match'] && req.headers['if-none-match'] === res.getHeader('ETag')){
-                console.log(`[${ip}] Using cached version of ${moduleId}`);
+                console.log(`[${client_id}] Using cached version of ${moduleId}`);
                 res.sendStatus(304);
                 return;
             }
@@ -64,14 +83,20 @@ app.get('/get/:moduleId', (req, res) => {
             result.stream.pipe(res)
         })
         .catch(err => {
-            console.error(`[${ip}] Error`, err);   
+            console.error(`[${client_id}] Error`, err);   
             return getEmptyImage().then(stream => stream.pipe(res))
         });
 });
 
 app.get('/cache/:imageURL', (req, res) => {
-    const ip = req.headers?.passthrough_client ? String(req.headers?.passthrough_client) : req.ip;
+    let client_id = req.cookies[CLIENT_ID_COOKIE] ? String(req.cookies[CLIENT_ID_COOKIE]) : uuidv4();
     res.setHeader('Cache-Control', 'no-cache');
+
+    if(req.headers?.passthrough_client){
+        client_id = String(req.headers?.passthrough_client);
+    }else{
+        res.setHeader('Set-Cookie', `${CLIENT_ID_COOKIE}=${client_id}; Max-Age=31536000; Http-Only; Path=/; SameSite=None; Secure`)
+    }
 
     getReadStreamImageDownload(req.params.imageURL)
         .then(stream => getMimeType(stream))
@@ -79,7 +104,7 @@ app.get('/cache/:imageURL', (req, res) => {
             res.setHeader('ETag', req.params.imageURL);
 
             if(!!req.headers['if-none-match'] && req.headers['if-none-match'] === res.getHeader('ETag')){
-                console.log(`[${ip}] Using cached version of ${req.params.imageURL}`);
+                console.log(`[${client_id}] Using cached version of ${req.params.imageURL}`);
                 res.sendStatus(304);
                 return;
             }
@@ -88,7 +113,7 @@ app.get('/cache/:imageURL', (req, res) => {
             result.stream.pipe(res);
         })
         .catch(err => {
-            console.error(`[${ip}] Error`, err);   
+            console.error(`[${client_id}] Error`, err);   
             return getEmptyImage().then(stream => stream.pipe(res))
         });
 })

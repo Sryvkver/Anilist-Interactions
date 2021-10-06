@@ -41,23 +41,23 @@ export class ThemeModule implements IModule {
             })
     }
 
-    set = (ip: string, query: any) => {
+    set = (client_id: string, query: any) => {
         //const isGlobal = query?.isGlobal === 'true' ? true : false;
         const themeName = String(query?.theme) || null;
         
         if(!this._id || !themeName)
             return;
         
-        updateModuleData(this._id, null, null, {ip, state: themeName});
+        updateModuleData(this._id, null, null, {client_id, state: themeName});
     };
 
-    get = async(ip: string, query: any, setEtag: (etag: string) => void) => {
+    get = async(client_id: string, query: any, setEtag: (etag: string) => void) => {
         if(!this._id)
             return getEmptyImage();
 
         await this.updateThemes();
 
-        const clientState = await findClientState(this._id, ip);
+        const clientState = await findClientState(this._id, client_id);
         let themeIndex = this.themeWrapper.themes.findIndex(ele => ele.themeName === clientState);
         themeIndex = themeIndex === -1 ? 0 : themeIndex;
 
@@ -66,7 +66,7 @@ export class ThemeModule implements IModule {
         setEtag(`${this._id}-${this.themeWrapper.themes[themeIndex].themeName}-${page?.name}`);
 
         if(page)
-            return getReadStreamImageDownload(page.url, ip);
+            return getReadStreamImageDownload(page.url, client_id);
         else
             return getEmptyImage();
     };

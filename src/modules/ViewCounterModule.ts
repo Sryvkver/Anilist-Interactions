@@ -12,9 +12,9 @@ export class ViewCounterModule implements IModule {
         this._id = moduleData._id?.toHexString() || '';
     }
 
-    set = (ip: string, query: any) => {};
+    set = (client_id: string, query: any) => {};
 
-    get = async(ip: string, query: any) => {
+    get = async(client_id: string, query: any) => {
         const backgroundImage = query?.image || null;
 
         console.log(query);
@@ -23,14 +23,14 @@ export class ViewCounterModule implements IModule {
             return getEmptyImage();
 
         if(!this._id || !query.x || !query.y || !query.text)
-            return getReadStreamImageDownload(backgroundImage, ip);
+            return getReadStreamImageDownload(backgroundImage, client_id);
 
         const states = await findAllClientStates(this._id);
-        let clientState = states.find(ele => ele.ip === ip);
+        let clientState = states.find(ele => ele.client_id === client_id);
 
         if(!clientState){
             clientState = {
-                ip,
+                client_id,
                 state: '1'
             };
 
@@ -54,7 +54,7 @@ export class ViewCounterModule implements IModule {
         
         const text = String(query.text).replace(/<--ALL-->/g, String(overallAmount)).replace(/<--UNIQUE-->/g, String(uniqueAmount));
 
-        return addTextToImage(ip, backgroundImage, text, query);
+        return addTextToImage(client_id, backgroundImage, text, query);
         //return getReadStreamImageDownload(backgroundImage);
     };
     

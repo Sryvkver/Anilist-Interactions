@@ -9,11 +9,11 @@ export const findModuleData = async (id: string) => {
     throw('Moduledata not found!');
 }
 
-export const findClientState = async (id: string, ip: string, defaultVal = '') => {
+export const findClientState = async (id: string, client_id: string, defaultVal = '') => {
     const clientState = await ModuleModel.findOne({
         _id: id,
         clientStates: {
-            '$elemMatch': {ip}
+            '$elemMatch': {client_id}
         }
     }, {'clientStates.$': 1});
 
@@ -41,7 +41,7 @@ export const findGlobalState = async (id: string, defaultVal = '') => {
     return defaultVal;
 }
 
-export const updateModuleData = async (id: string, secret: string | null = null, globalState: string | null = null, clientState: {ip: string, state: string} | null = null) => {
+export const updateModuleData = async (id: string, secret: string | null = null, globalState: string | null = null, clientState: {client_id: string, state: string} | null = null) => {
     const moduleData = await ModuleModel.findById(id);
 
     if(!moduleData)
@@ -53,7 +53,7 @@ export const updateModuleData = async (id: string, secret: string | null = null,
     }
 
     if(clientState){
-        const oldClientState = moduleData.clientStates.find(ele => ele.ip === clientState.ip);
+        const oldClientState = moduleData.clientStates.find(ele => ele.client_id === clientState.client_id);
 
         if(!oldClientState){
             moduleData.clientStates.push(clientState);

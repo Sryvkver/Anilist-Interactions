@@ -6,6 +6,6 @@ export interface IModule {
     _id?: string;
     readonly module: string;
 
-    set: (ip: string, query: any) => void;
-    get: (ip: string, query: any, setEtag: (etag: string) => void) => Promise<ReadStream | Request>
+    set: (client_id: string, query: any) => void;
+    get: (client_id: string, query: any, setEtag: (etag: string) => void) => Promise<ReadStream | Request>
 }
